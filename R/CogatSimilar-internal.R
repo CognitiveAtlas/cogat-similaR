@@ -1,28 +1,48 @@
 library(rrdf)
 
-getParents = function() {
-	if(!exists("CogatSimilarEnv")) .initial()
-	
-  # Load tasks RDA from data
+# Function to get concept parent tree
+getConceptParents = function(CAID1,CAID2){
+  # TO DO: This needs to return a complete tree for CA concepts
+  
+}
+
+# Function to get task parents
+getTaskParents = function(CAID1,CAID2) {
+  Parents = list()
+  Parents[[CAID1]] = taskParentsQuery(CAID1)
+  Parents[[CAID2]] = taskParentsQuery(CAID2)
+  assign("Parents", Parents, envir=CogatSimilarEnv)
+}
+
+taskParentsQuery = function(CAID){
+  
+  # Note: this needs to change with package
   tasks = load.rdf("/home/vanessa/Documents/Dropbox/Code/R/PACKAGES/CogatSimilar/data/all_tasks.rdf")
   
-	query = '
+  query = paste('
   PREFIX dc: <http://purl.org/dc/terms/>
   PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-  SELECT ?term
-  WHERE {
-    ?stuff dc:identifier ?term;
-    skos:example ?examples 
-  }';
+  PREFIX cogat: <http://www.cognitiveatlas.org/id/>
 
-	FILTER regex(?examples, "descended")
-	
-  #TODO: Write sparql query here
-	#?stuff dc:identifier ?term
-	
-  #	"trm_4fba85a597ca9"
-	Parents = sparql.rdf(tasks, query)
-  assign("Parents", Parents, envir=CogatSimilarEnv)
+  SELECT DISTINCT ?example
+  WHERE {?term_uri dc:identifier "',CAID,'";
+         skos:example ?example .      
+  }',sep="");
+
+  parents = grep("descended",sparql.rdf(tasks,query))
+  
+  query = paste('
+  PREFIX dc: <http://purl.org/dc/terms/>
+  PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+  PREFIX cogat: <http://www.cognitiveatlas.org/id/>
+
+  SELECT DISTINCT ?url
+  WHERE {?term_uri dc:identifier "',CAID,'";
+         skos:related ?url .      
+  }',sep="");
+
+  ids = gsub("cogat:","",sparql.rdf(tasks,query))
+  return(ids[parents])
 }
 
 getOffsprings <- function() {
@@ -206,15 +226,10 @@ wangsim = function(CAID1, CAID2) {
 	if (CAID1 == CAID2)
 		return (gosim=1)		
 
-	Parents.name = switch(ont,
-		MF = "MFParents",
-		BP = "BPParents",
-		CC = "CCParents"
-	)
 	if (!exists(Parents.name, envir=CogatSimilarEnv)) {
-		getParents()
+		getParents(CAID1,CAID2)
 	}
-	Parents = get(Parents.name, envir=CogatSimilarEnv)
+	Parents = get(Parents, envir=CogatSimilarEnv)
 	
 	sv.a = 1
 	sv.b = 1
@@ -222,8 +237,8 @@ wangsim = function(CAID1, CAID2) {
 	names(sv.a) = CAID1
 	names(sv.b) = CAID2 
 	
-	sv.a = ygcSemVal(GOID1, ont, Parents, sv.a, sw, weight.isa, weight.partof)
-	sv.b = ygcSemVal(GOID2, ont, Parents, sv.b, sw, weight.isa, weight.partof)
+	sv.a = ygcSemVal(CAID1, Parents, sv.a, sw, weight.isa, weight.partof)
+	sv.b = ygcSemVal(CAID2, Parents, sv.b, sw, weight.isa, weight.partof)
 	
 	sv.a = uniqsv(sv.a)
 	sv.b = uniqsv(sv.b)
@@ -244,31 +259,31 @@ uniqsv <- function(sv) {
 	return (sv)
 }
 
-ygcSemVal_internal <- function(goid, ont, Parents, sv, w, weight.isa, weight.partof) {
-	p <- Parents[goid]
-	p <- unlist(p[[1]])
+ygcSemVal_internal = function(CAID, Parents, sv, w, weight.isa, weight.partof) {
+	p = unlist(Parents[[CAID]])
 	if (length(p) == 0) {
-		#warning(goid, " may not belong to Ontology ", ont)
+		warning(CAID, " does not have concepts with parents defined in Cognitive Atlas")
 		return(0)
 	}
-	relations <- names(p)
-	old.w <- w
+	relations = names(p)
+	old.w = w
 	for (i in 1:length(p)) {
 		if (relations[i] == "is_a") {
-			w <- old.w * weight.isa
+			w = old.w * weight.isa
 		} else {
-			w <- old.w * weight.partof
+			w = old.w * weight.partof
 		}
-		names(w) <- p[i]
-		sv <- c(sv,w)
+		names(w) = p[i]
+		sv = c(sv,w)
+    # Here is the recursion, "all" indicates the parent node
 		if (p[i] != "all") {
-			sv <- ygcSemVal_internal(p[i], ont, Parents, sv, w, weight.isa, weight.partof)
+			sv = ygcSemVal_internal(p[i], Parents, sv, w, weight.isa, weight.partof)
 		}
 	}
 	return (sv)
 }
 
-ygcSemVal <- function(goid, ont, Parents, sv, w, weight.isa, weight.partof) {
+ygcSemVal = function(CAID, Parents, sv, w, weight.isa, weight.partof) {
 	if(!exists("CogatSimilarCache")) return(ygcSemVal_internal(goid, ont, Parents, sv, w, weight.isa, weight.partof))
 	goid.ont <- paste(goid, ont, sep=".")
 	if (!exists(goid.ont, envir=GOSemSimCache)) {
