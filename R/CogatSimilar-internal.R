@@ -144,7 +144,6 @@ walkUpTree = function(base){
   base = getBaseURI(base)
   names(base) = "is_a"
   concepts = c(base,concepts,root)
-  #concepts = concepts[!duplicated(concepts)] # only count each relationship once
   return(concepts)
 }
 
@@ -328,6 +327,7 @@ wangsim = function(CAID1, CAID2) {
 	return(sim)
 }
 
+# If a node is hit twice in the graph, we use the highest weight
 uniqsv = function(sv) {
 	sv = unlist(sv)
 	una = unique(names(sv))
@@ -360,7 +360,7 @@ SemVal = function(CAID, Parents, startValue, startWeight, weight.isa, weight.par
 	return (startValue)
 }
 
-`ygcInfoContentMethod` <- function(GOID1, GOID2, ont, measure, organism) {
+InfoContentMethod = function(GOID1, GOID2, ont, measure, organism) {
 	if(!exists("GOSemSimEnv")) .initial()
 	fname <- paste("Info_Contents", ont, organism, sep="_")
 	tryCatch(utils::data(list=fname, package="GOSemSim", envir=GOSemSimEnv))

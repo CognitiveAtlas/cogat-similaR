@@ -17,9 +17,9 @@ function(CAID1, CAID2, method="Wang"){
 	if (method == "Wang") {
 		sim = wangsim(CAID1, CAID2)
 	} else {
-		sim = ygcInfoContentMethod(CAID1, CAID2, method=method)
+		sim = InfoContentMethod(CAID1, CAID2, method=method)
 	}
-	sim <- unname(sim, force=TRUE)
+	sim = unname(sim, force=TRUE)
 	return(round(sim, digits=3))	
 }
 
