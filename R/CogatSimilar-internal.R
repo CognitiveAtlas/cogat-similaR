@@ -1,71 +1,151 @@
 library(rrdf)
 
-# Function to get concept parent tree
-getConceptParents = function(CAID1,CAID2){
-  # TO DO: This needs to return a complete tree for CA concepts
-  
-}
+getConcepts = function(CAID1,CAID2){
 
-# Function to get task parents
-getTaskParents = function(CAID1,CAID2) {
   Parents = list()
-  Parents[[CAID1]] = taskParentsQuery(CAID1)
-  Parents[[CAID2]] = taskParentsQuery(CAID2)
+  
+  # Climb tree and get all concepts
+  Parents[[CAID1]] = getParents(CAID1)
+  Parents[[CAID2]] = getParents(CAID2)
   assign("Parents", Parents, envir=CogatSimilarEnv)
 }
 
-taskParentsQuery = function(CAID){
+
+# Function to get concept parent tree
+getParents = function(CAID){
+
+  cogat = load.rdf("/home/vanessa/Documents/Dropbox/Code/R/PACKAGES/CogatSimilar/data/cogat.v2.owl")
+  cat("\nLooking up initial concepts associated with contrast",CAID)
   
-  # Note: this needs to change with package
-  tasks = load.rdf("/home/vanessa/Documents/Dropbox/Code/R/PACKAGES/CogatSimilar/data/all_tasks.rdf")
-  
+  # First get associated concept IDS
   query = paste('
   PREFIX dc: <http://purl.org/dc/terms/>
   PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+  PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+  PREFIX owl: <http://www.w3.org/2002/07/owl#>
   PREFIX cogat: <http://www.cognitiveatlas.org/id/>
 
-  SELECT DISTINCT ?example
-  WHERE {?term_uri dc:identifier "',CAID,'";
-         skos:example ?example .      
+  SELECT DISTINCT ?term_uri ?task ?relation
+  WHERE {
+    ?term_uri dc:identifier "',CAID,'" .
+    ?term_uri rdfs:subClassOf ?subclass .
+    ?subclass owl:someValuesFrom ?task .
+    ?subclass owl:onProperty ?relation .
   }',sep="");
 
-  parents = grep("descended",sparql.rdf(tasks,query))
+  result = sparql.rdf(cogat,query)
+  concepts = result[grep("#measures",result[,3]),2]
+  term_uri = result[1,1]
   
+  cat("\nTERM URI:",term_uri,"CONCEPTS:",unlist(lapply(concepts,getBaseURI)),sep="\n")
+  
+  # The names label == parent
+  names(concepts) = rep("base",length(concepts))
+  
+  # Now walk up tree and retrieve "is_a" and "part_of" relations for each base
+  TREE = list()
+  for (base in concepts){
+    TREE[[getBaseURI(base)]] = walkUpTree(base)
+  }
+  return(TREE)
+}
+
+# Get related "is_a" and "part_of" concepts
+getRelatedConcepts = function(CONID) {
+  cogat = load.rdf("/home/vanessa/Documents/Dropbox/Code/R/PACKAGES/CogatSimilar/data/cogat.v2.owl")
+  
+  hasParents = FALSE
+  hasPartOf = FALSE
+  
+  # First get the parent
+  # Here is the parent <rdfs:subClassOf rdf:resource="&cogat;CAO_00525"/> (is_a)
   query = paste('
   PREFIX dc: <http://purl.org/dc/terms/>
   PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+  PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+  PREFIX owl: <http://www.w3.org/2002/07/owl#>
   PREFIX cogat: <http://www.cognitiveatlas.org/id/>
 
-  SELECT DISTINCT ?url
-  WHERE {?term_uri dc:identifier "',CAID,'";
-         skos:related ?url .      
+  SELECT DISTINCT ?subclass
+  WHERE {<',
+     CONID,'> dc:identifier ?cnt_uri .
+     <',CONID, '> rdfs:subClassOf ?subclass .
   }',sep="");
-
-  ids = gsub("cogat:","",sparql.rdf(tasks,query))
-  return(ids[parents])
-}
-
-getOffsprings <- function() {
-	if(!exists("CogSimilarEnv")) .initial()
-
-  #TODO: Write sparql query here
   
-  assign(eval(wh_Offsprings), Offsprings, envir=CogatSimEnv)
+  result = sparql.rdf(cogat,query)
+  if (length(result)>0){
+    result = result[grep("#",result)]    
+    # Remove the conid from the list
+    parents = result[-grep(CONID,result)]
+    parents = unlist(lapply(parents,getBaseURI))
+    names(parents) = rep("is_a",length(parents))
+    hasParents = TRUE
+  } 
+  
+  # Next get associated "part of" concept IDS
+  query = paste('
+  PREFIX dc: <http://purl.org/dc/terms/>
+  PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+  PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+  PREFIX owl: <http://www.w3.org/2002/07/owl#>
+  PREFIX cogat: <http://www.cognitiveatlas.org/id/>
+
+  SELECT DISTINCT ?task ?relation
+  WHERE {<',
+     CONID,'> dc:identifier ?cnt_uri .
+     <',CONID, '> rdfs:subClassOf ?subclass .
+     ?subclass owl:someValuesFrom ?task .
+     ?subclass owl:onProperty ?relation .
+  }',sep="");
+  
+  result = sparql.rdf(cogat,query)
+  if (length(result)>0){
+    partof = result[grep("#part_of",result[,2]),1]
+    if (length(partof) > 0){
+      partof = unlist(lapply(partof,getBaseURI))      
+      names(partof) = rep("part_of",length(partof))
+      hasPartOf = TRUE    
+    }
+  } 
+  if (hasParent && hasPartOf){
+    return(c(parents,partof))    
+    } else if (hasParent) {
+    return(parent)
+    } else if (hasPartOf){
+    return(partof)
+    } else {
+    return(NA)
+    }
 }
 
-ygcGetAncestors <- function(ont="MF") {
-	if(!exists("GOSemSimEnv")) .initial()
-	wh_Ancestors <- switch(ont,
-		MF = "MFAncestors",
-		BP = "BPAncestors",
-		CC = "CCAncestors"	
-	)		
-	Ancestors <- switch(ont,
-		MF = AnnotationDbi::as.list(GOMFANCESTOR) ,
-		BP = AnnotationDbi::as.list(GOBPANCESTOR) , 
-		CC = AnnotationDbi::as.list(GOCCANCESTOR)	
-	)
-	assign(eval(wh_Ancestors), Ancestors, envir=GOSemSimEnv)
+getBaseURI = function(uri){
+  return(strsplit(uri,"#")[[1]][2])
+}
+
+# Starting at base concept, walk up tree to get related concepts
+walkUpTree = function(base){
+  queue = base
+  concepts = c()
+  while (length(queue) > 0){
+    current = queue[1]
+    queue = queue[-1]
+    # This is the base of the ontology
+    if (current!="http://www.cognitiveatlas.org/ontology/cogat.owl#CAO_00001"){
+      tmp = getRelatedConcepts(current)
+      if (!is.na(tmp[1])){
+        cat(paste(names(tmp),tmp),sep="\n")
+        concepts = c(concepts,tmp)
+        queue = c(queue,tmp)
+      }
+    }
+  }
+  root = "CAO_00001"
+  names(root) = "is_a"
+  base = getBaseURI(base)
+  names(base) = "is_a"
+  concepts = c(base,concepts,root)
+  #concepts = concepts[!duplicated(concepts)] # only count each relationship once
+  return(concepts)
 }
 
 ygcCheckAnnotationPackage <- function(species){
@@ -226,10 +306,11 @@ wangsim = function(CAID1, CAID2) {
 	if (CAID1 == CAID2)
 		return (gosim=1)		
 
-	if (!exists(Parents.name, envir=CogatSimilarEnv)) {
-		getParents(CAID1,CAID2)
+  # First retrieve a tree of concepts linked to the contrast  
+	if (!exists(Concepts, envir=CogatSimilarEnv)) {
+		getConcepts(CAID1,CAID2)
 	}
-	Parents = get(Parents, envir=CogatSimilarEnv)
+	Concepts = get(Concepts, envir=CogatSimilarEnv)
 	
 	sv.a = 1
 	sv.b = 1
@@ -237,11 +318,8 @@ wangsim = function(CAID1, CAID2) {
 	names(sv.a) = CAID1
 	names(sv.b) = CAID2 
 	
-	sv.a = ygcSemVal(CAID1, Parents, sv.a, sw, weight.isa, weight.partof)
-	sv.b = ygcSemVal(CAID2, Parents, sv.b, sw, weight.isa, weight.partof)
-	
-	sv.a = uniqsv(sv.a)
-	sv.b = uniqsv(sv.b)
+	sv.a = uniqsv(SemVal(CAID1, Parents, sv.a, sw, weight.isa, weight.partof))
+	sv.b = uniqsv(SemVal(CAID2, Parents, sv.b, sw, weight.isa, weight.partof))
 	
 	idx = intersect(names(sv.a), names(sv.b))
 	inter.sva = unlist(sv.a[idx])
@@ -250,51 +328,36 @@ wangsim = function(CAID1, CAID2) {
 	return(sim)
 }
 
-
-
-uniqsv <- function(sv) {
-	sv <- unlist(sv)
-	una <- unique(names(sv))
-	sv <- unlist(sapply(una, function(x) {max(sv[names(sv)==x])}))
+uniqsv = function(sv) {
+	sv = unlist(sv)
+	una = unique(names(sv))
+	sv = unlist(sapply(una, function(x) {max(sv[names(sv)==x])}))
 	return (sv)
 }
 
-ygcSemVal_internal = function(CAID, Parents, sv, w, weight.isa, weight.partof) {
+# Return list of weights assigned to each part_of, is_a relationshi
+SemVal = function(CAID, Parents, startValue, startWeight, weight.isa, weight.partof) {
 	p = unlist(Parents[[CAID]])
-	if (length(p) == 0) {
-		warning(CAID, " does not have concepts with parents defined in Cognitive Atlas")
-		return(0)
+  
+	# Ensure the root node is at the end
+	p = sort(p,decreasing=TRUE)
+  if (length(p) == 0) {
+		cat("WARNING:",CAID, "does not have related concept parents defined in Cognitive Atlas\n")
+		return(startValue)
 	}
 	relations = names(p)
-	old.w = w
+	old.w = startWeight
 	for (i in 1:length(p)) {
-		if (relations[i] == "is_a") {
-			w = old.w * weight.isa
+		if (grepl("is_a",relations[i])) {
+			startWeight = old.w * weight.isa
 		} else {
-			w = old.w * weight.partof
+			startWeight = old.w * weight.partof
 		}
-		names(w) = p[i]
-		sv = c(sv,w)
-    # Here is the recursion, "all" indicates the parent node
-		if (p[i] != "all") {
-			sv = ygcSemVal_internal(p[i], Parents, sv, w, weight.isa, weight.partof)
-		}
+		names(startWeight) = p[i]
+		startValue = c(startValue,startWeight)
+    old.w = startWeight
 	}
-	return (sv)
-}
-
-ygcSemVal = function(CAID, Parents, sv, w, weight.isa, weight.partof) {
-	if(!exists("CogatSimilarCache")) return(ygcSemVal_internal(goid, ont, Parents, sv, w, weight.isa, weight.partof))
-	goid.ont <- paste(goid, ont, sep=".")
-	if (!exists(goid.ont, envir=GOSemSimCache)) {
-	  	value <- ygcSemVal_internal(goid, ont, Parents, sv, w, weight.isa, weight.partof)
-	  	assign(goid.ont, value, envir=GOSemSimCache)
-		#cat("recompute ", goid, value, "\n")
-	}
-	else{
-		#cat("cache ", goid, get(goid, envir=GOSemSimCache), "\n")
-	}
-	return(get(goid.ont, envir=GOSemSimCache))
+	return (startValue)
 }
 
 `ygcInfoContentMethod` <- function(GOID1, GOID2, ont, measure, organism) {

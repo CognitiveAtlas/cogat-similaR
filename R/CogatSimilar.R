@@ -1,8 +1,8 @@
 #' Cognitive Atlas Ontological Similarity
 #'
-#' Five methods proposed by Resnik, Schlicker, Jiang, Lin and Wang, originally applied for Gene Ontology (GoSemSim package) modified for the Cognitive Atlas to calculate ontological similarity of terms.
-#' @param CAID1: the unique ID for the first term 
-#' @param CAID2: the unique ID for the second term
+#' Five methods proposed by Resnik, Schlicker, Jiang, Lin and Wang, originally applied for Gene Ontology (GoSemSim package) modified for the Cognitive Atlas to calculate ontological similarity of contrasts.
+#' @param CAID1: the unique ID for the first term, should be a contrast, e.g., "cnt_4e00ccaa100fd"
+#' @param CAID2: the unique ID for the second term, should be a contrast, e.g., "cnt_4e00ccaa100fd"
 #' @param method: "Resnik", "Jiang", "Lin", "Rel", "Wang" [default: Wang]
 #' @keywords cognitive atlas, ontology, similarity
 #' @return 
