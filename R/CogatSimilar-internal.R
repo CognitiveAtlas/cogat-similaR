@@ -7,17 +7,12 @@ getConcepts = function(CAID1,CAID2){
   # Climb tree and get all concepts
   Parents[[CAID1]] = getParents(CAID1)
   Parents[[CAID2]] = getParents(CAID2)
-  assign("Parents", Parents, envir=CogatSimilarEnv)
+  return(Parents)
 }
 
 
-# Function to get concept parent tree
-getParents = function(CAID){
-
-  cogat = load.rdf("/home/vanessa/Documents/Dropbox/Code/R/PACKAGES/CogatSimilar/data/cogat.v2.owl")
-  cat("\nLooking up initial concepts associated with contrast",CAID)
-  
-  # First get associated concept IDS
+# Get concepts associated with a contrast
+getAssociatedContrasts = function(CAID){
   query = paste('
   PREFIX dc: <http://purl.org/dc/terms/>
   PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
@@ -32,7 +27,7 @@ getParents = function(CAID){
     ?subclass owl:someValuesFrom ?task .
     ?subclass owl:onProperty ?relation .
   }',sep="");
-
+  
   result = sparql.rdf(cogat,query)
   concepts = result[grep("#measures",result[,3]),2]
   term_uri = result[1,1]
@@ -41,6 +36,17 @@ getParents = function(CAID){
   
   # The names label == parent
   names(concepts) = rep("base",length(concepts))
+  return(concepts)
+}
+
+# Function to get concept parent tree
+getParents = function(CAID){
+
+  cogat = load.rdf("/home/vanessa/Documents/Dropbox/Code/R/PACKAGES/CogatSimilar/data/cogat.v2.owl")
+  cat("\nLooking up initial concepts associated with contrast",CAID)
+  
+  # First get associated concept IDS
+  concepts = getAssociatedContrasts(CAID)
   
   # Now walk up tree and retrieve "is_a" and "part_of" relations for each base
   TREE = list()
@@ -147,169 +153,16 @@ walkUpTree = function(base){
   return(concepts)
 }
 
-ygcCheckAnnotationPackage <- function(species){
-	pkgname <- switch (species,
-		human = "org.Hs.eg.db",
-		fly = "org.Dm.eg.db",
-		mouse = "org.Mm.eg.db",
-		rat = "org.Rn.eg.db",
-		yeast = "org.Sc.sgd.db",
-		zebrafish = "org.Dr.eg.db",
-		worm = "org.Ce.eg.db",
-		arabidopsis = "org.At.tair.db",
-		ecolik12 = "org.EcK12.eg.db", 
-		bovine	= "org.Bt.eg.db",
-		canine	= "org.Cf.eg.db", 
-		anopheles	=	"org.Ag.eg.db", 
-		ecsakai	=	"org.EcSakai.eg.db", 
-		chicken	=	"org.Gg.eg.db", 
-		chimp	=	"org.Pt.eg.db", 
-		malaria	=	"org.Pf.plasmo.db", 
-		rhesus	=	"org.Mmu.eg.db", 
-		pig	= 	"org.Ss.eg.db", 
-		xenopus	=	"org.Xl.eg.db"
-	)
-	p <- installed.packages()
-	pn <- p[,1]
-	if (sum(pn==pkgname) == 0) {
-		print("The corresponding annotation package did not installed in this machine.")
-		print("GOSemSim will install and load it automatically.")
-		#source("http://bioconductor.org/biocLite.R")
-		#biocLite(pkgname)
-		install.packages(pkgname,repos="http://www.bioconductor.org/packages/2.6/data/annotation",type="source")
-	}
-	switch (species,
-		human = library("org.Hs.eg.db"),
-		fly = library("org.Dm.eg.db"),
-		mouse = library("org.Mm.eg.db"),
-		rat = library("org.Rn.eg.db"),
-		yeast = library("org.Sc.sgd.db"),
-		zebrafish = library("org.Dr.eg.db"),
-		worm = library("org.Ce.eg.db"),
-		arabidopsis = library("org.At.tair.db"),
-		ecolik12 = library("org.EcK12.eg.db"),
-		bovine	= library("org.Bt.eg.db"),
-		canine	= library("org.Cf.eg.db"), 
-		anopheles	=	library("org.Ag.eg.db"), 
-		ecsakai	=	library("org.EcSakai.eg.db"), 
-		chicken	=	library("org.Gg.eg.db"), 
-		chimp	=	library("org.Pt.eg.db"), 
-		malaria	=	library("org.Pf.plasmo.db"), 
-		rhesus	=	library("org.Mmu.eg.db"), 
-		pig	= library("org.Ss.eg.db"), 
-		xenopus	=	library("org.Xl.eg.db")			
-	)
-}
-
-ygcGetGOMap <- function(organism="human") {
-	if(!exists("GOSemSimEnv")) .initial()
-	ygcCheckAnnotationPackage(organism)
-	species <- switch(organism,
-		human = "Hs",
-		fly = "Dm",
-		mouse = "Mm",
-		rat = "Rn",
-		yeast = "Sc",
-		zebrafish = "Dr",
-		worm = "Ce",
-		arabidopsis = "At",
-		ecolik12 = "EcK12",
-		bovine	= "Bt",
-		canine	= "Cf", 
-		anopheles	=	"Ag", 
-		ecsakai	=	"EcSakai", 
-		chicken	=	"Gg", 
-		chimp	=	"Pt", 
-		malaria	=	"Pf", 
-		rhesus	=	"Mmu", 
-		pig	= "Ss", 
-		xenopus	=	"Xl"
-	)
-	gomap <- switch(organism,
-		human = org.Hs.egGO,
-		fly = org.Dm.egGO,
-		mouse = org.Mm.egGO,
-		rat = org.Rn.egGO,
-		yeast = org.Sc.sgdGO,
-		zebrafish = org.Dr.egGO,
-		worm = org.Ce.egGO,
-		arabidopsis = org.At.tairGO,
-		ecolik12 = org.EcK12.egGO,
-		bovine	= org.Bt.egGO,
-		canine	= org.Cf.egGO, 
-		anopheles	=	org.Ag.egGO, 
-		ecsakai	=	org.EcSakai.egGO, 
-		chicken	=	org.Gg.egGO, 
-		chimp	=	org.Pt.egGO, 
-		malaria	=	org.Pf.plasmoGO, 
-		rhesus	=	org.Mmu.egGO, 
-		pig	= org.Ss.egGO, 
-		xenopus	=	org.Xl.egGO		
-	)
-	assign(eval(species), gomap, envir=GOSemSimEnv)
-}
-
-`ygcGetOnt` <-  function(gene, organism, ontology, dropCodes) {
-	if(!exists("GOSemSimEnv")) .initial()
-	species <- switch(organism,
-		human = "Hs",
-		fly = "Dm",
-		mouse = "Mm",
-		rat = "Rn",
-		yeast = "Sc",
-		zebrafish = "Dr",
-		worm = "Ce",
-		arabidopsis = "At",
-		ecolik12 = "EcK12",
-		bovine	= "Bt",
-		canine	= "Cf", 
-		anopheles	=	"Ag", 
-		ecsakai	=	"EcSakai", 
-		chicken	=	"Gg", 
-		chimp	=	"Pt", 
-		malaria	=	"Pf", 
-		rhesus	=	"Mmu", 
-		pig	= "Ss", 
-		xenopus	=	"Xl"
-	)
-	if (!exists(species, envir=GOSemSimEnv)) {
-		ygcGetGOMap(organism)
-	}	
-	gomap <- get(species, envir=GOSemSimEnv)
-	
-    allGO <- gomap[[gene]]
-    if (is.null(allGO)) {
-    	return (NA)
-    }
-    if (sum(!is.na(allGO)) == 0) {
-    	return (NA)
-    }
-    if(!is.null(dropCodes)) { 
-      evidence<-sapply(allGO, function(x) x$Evidence) 
-      drop<-evidence %in% dropCodes
-      allGO<-allGO[!drop]
-    }
-    category<-sapply(allGO, function(x) x$Ontology)
-    allGO<-allGO[category %in% ontology]
-
-    if(length(allGO)==0) return (NA)
-    return (unlist(unique(names(allGO))))
-}
-
-
 wangsim = function(CAID1, CAID2) {
-	if(!exists("CogatSimilarEnv")) .initial()
 	weight.isa = 0.8
 	weight.partof = 0.6
 
-	if (CAID1 == CAID2)
+	if (CAID1 == CAID2){
 		return (gosim=1)		
-
+  }
+  
   # First retrieve a tree of concepts linked to the contrast  
-	if (!exists(Concepts, envir=CogatSimilarEnv)) {
-		getConcepts(CAID1,CAID2)
-	}
-	Concepts = get(Concepts, envir=CogatSimilarEnv)
+	Concepts = getConcepts(CAID1,CAID2)
 	
 	sv.a = 1
 	sv.b = 1
@@ -327,7 +180,7 @@ wangsim = function(CAID1, CAID2) {
 	return(sim)
 }
 
-# If a node is hit twice in the graph, we use the highest weight
+# If a node is hit twice in the graph (from separate terms), we use the highest weight
 uniqsv = function(sv) {
 	sv = unlist(sv)
 	una = unique(names(sv))
@@ -360,42 +213,50 @@ SemVal = function(CAID, Parents, startValue, startWeight, weight.isa, weight.par
 	return (startValue)
 }
 
-InfoContentMethod = function(GOID1, GOID2, ont, measure, organism) {
-	if(!exists("GOSemSimEnv")) .initial()
-	fname <- paste("Info_Contents", ont, organism, sep="_")
-	tryCatch(utils::data(list=fname, package="GOSemSim", envir=GOSemSimEnv))
-	Info.contents <- get("IC", envir=GOSemSimEnv)
-
-	rootCount <- max(Info.contents[Info.contents != Inf])
-	Info.contents["all"] = 0
-	p1 <- Info.contents[GOID1]/rootCount
-	p2 <- Info.contents[GOID2]/rootCount    
+InfoContentMethod = function(CAID1, CAID2, method) {
+  
+  # For now we are loading dummy data 
+  load("/home/vanessa/Documents/Dropbox/Code/R/PACKAGES/CogatSimilar/data/Info_Contents_dummy.rda")
+	Info.contents = IC
+  
+	rootCount = max(Info.contents[Info.contents != Inf])
+	Info.contents["CAO_00001"] = 0
+  
+  # Get the concepts assigned to the contrast
+  concepts.caid1 = getAssociatedContrasts(CAID1)
+  concepts.caid2 = getAssociatedContrasts(CAID2)
+  
+  # Calculate an average probability
+  p1 = Info.contents[which(names(Info.contents) %in% unlist(lapply(concepts.caid1,getBaseURI)))]
+  p2 = Info.contents[which(names(Info.contents) %in% unlist(lapply(concepts.caid2,getBaseURI)))]
+  
+  p1 = mean(p1[!is.infinite(p1)])
+  p2 = mean(p2[!is.infinite(p2)])
+  
+  p1 = p1/rootCount
+	p2 = p2/rootCount    
 
 	if (p1 == 0 || p2 == 0) return (NA)
-	Ancestor.name <- switch(ont,
-		MF = "MFAncestors",
-		BP = "BPAncestors",
-		CC = "CCAncestors"	
-	)	
-	if (!exists(Ancestor.name, envir=GOSemSimEnv)) {
-		ygcGetAncestors(ont)
-	}
 	
-	Ancestor <- get(Ancestor.name, envir=GOSemSimEnv)					
-	ancestor1 <- unlist(Ancestor[GOID1])
-	ancestor2 <- unlist(Ancestor[GOID2])
-	if (GOID1 == GOID2) {
-		commonAncestor <- GOID1
-	} else if (GOID1 %in% ancestor2) {
-		commonAncestor <- GOID1
-	} else if (GOID2 %in% ancestor1) {
-		commonAncestor <- GOID2
+  # QUESTION: Do we only want to select is_a relationships here? 
+  # Will select both is_a and part_of for now.
+	ancestor.caid1 = sort(unique(unlist(getParents(CAID1))),decreasing=TRUE)
+  ancestor.caid2 = sort(unique(unlist(getParents(CAID2))),decreasing=TRUE)
+	
+  # If we are comparing a term to itself, the common ancestors are the shared concepts
+  if (CAID1 == CAID2) {
+		commonAncestor = ancestor.caid1
 	} else { 
-		commonAncestor <- intersect(ancestor1, ancestor2)
+		commonAncestor = intersect(ancestor.caid1, ancestor.caid2)
 	}
-	if (length(commonAncestor) == 0) return (NA)
-	pms <- max(Info.contents[commonAncestor], na.rm=TRUE)/rootCount
-	sim<-switch(measure,
+
+  commonAncestor = commonAncestor[!is.infinite(commonAncestor)]
+  if (length(commonAncestor) == 0) return (NA)
+  
+  commonAncestor = Info.contents[commonAncestor]
+  commonAncestor = commonAncestor[!is.infinite(commonAncestor)]
+	pms = max(commonAncestor)/rootCount
+	sim = switch(method,
    	    Resnik = pms,
    	    Lin = pms/(p1+p2),
    	    Jiang = 1 - min(1, -2*pms + p1 + p2), 
@@ -404,9 +265,7 @@ InfoContentMethod = function(GOID1, GOID2, ont, measure, organism) {
 	return (sim)
 }
 
-
-
-ygcCompute_Information_Content <- function(dropCodes="NULL", ont, organism) {
+Compute_Information_Content = function(dropCodes="NULL", ont, organism) {
 	wh_ont <- match.arg(ont, c("MF", "BP", "CC"))
 	wh_organism <- match.arg(organism, c("human", "fly", "mouse", "rat", "yeast", "zebrafish", "worm", "arabidopsis", "ecolik12", "bovine","canine","anopheles","ecsakai","chicken","chimp","malaria","rhesus","pig","xenopus"))
 	ygcCheckAnnotationPackage(wh_organism)
