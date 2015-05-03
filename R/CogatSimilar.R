@@ -11,8 +11,7 @@
 #' @examples
 #' 
 
-`CogatSimilar` =
-function(CAID1, CAID2, method="Wang"){
+CogatSimilar = function(CAID1, CAID2, method="Wang"){
 	method = match.arg(method, c("Resnik", "Jiang", "Lin", "Rel", "Wang"))
 	if (method == "Wang") {
 		sim = wangsim(CAID1, CAID2)
