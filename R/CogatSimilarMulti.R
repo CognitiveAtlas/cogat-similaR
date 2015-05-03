@@ -3,6 +3,7 @@
 #' Generate ontological similarity score for two lists of contrast IDs.
 #' @param CALIST1: a list of unique IDs, should be contrasts, e.g., c("cnt_4e00ccaa100fd","cnt_4e00ccaa100fd")
 #' @param CALIST2: a list of unique IDs, should be contrasts, e.g., c("cnt_4e00ccaa100fd","cnt_4e00ccaa100fd")
+#' @param owl: The ontology owl file (RDF) object read in with load.rdf function of rrdf package (provided in package example folder)
 #' @param method: "Resnik", "Jiang", "Lin", "Rel", "Wang" [default: Wang]
 #' @keywords cognitive atlas, ontology, similarity
 #' @return 
@@ -10,8 +11,11 @@
 #' @export
 #' 
 
-CogatSimilarMulti = function(CALIST1, CALIST2, method="Wang"){
-	method = match.arg(method, c("Resnik", "Jiang", "Lin", "Rel", "Wang"))
+CogatSimilarMulti = function(CALIST1, CALIST2, owlFile, method="Wang"){
+
+  library(rrdf)
+  
+  method = match.arg(method, c("Resnik", "Jiang", "Lin", "Rel", "Wang"))
 
 	CA1 = unlist(CALIST1)
 	CA2 = unlist(CALIST2)
@@ -23,7 +27,7 @@ CogatSimilarMulti = function(CALIST1, CALIST2, method="Wang"){
 	colnames(scores) = CA2
 	for(i in 1:m) {
 		for (j in 1:n) {
-			scores[i,j] = CogatSimilar(CA1[i], CA2[j], method=method)
+			scores[i,j] = CogatSimilar(CA1[i], CA2[j], owlFile=owlFile, method=method)
 		}
 	}
 

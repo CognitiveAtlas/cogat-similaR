@@ -1,18 +1,17 @@
-library(rrdf)
-
-getConcepts = function(CAID1,CAID2){
+getConcepts = function(CAID1,CAID2,owlFile){
 
   Parents = list()
   
   # Climb tree and get all concepts
-  Parents[[CAID1]] = getParents(CAID1)
-  Parents[[CAID2]] = getParents(CAID2)
+  Parents[[CAID1]] = getParents(CAID1,owlFile)
+  Parents[[CAID2]] = getParents(CAID2,owlFile)
   return(Parents)
 }
 
 
 # Get concepts associated with a contrast
-getAssociatedContrasts = function(CAID){
+getAssociatedContrasts = function(CAID,cogat){
+  
   query = paste('
   PREFIX dc: <http://purl.org/dc/terms/>
   PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
@@ -40,26 +39,23 @@ getAssociatedContrasts = function(CAID){
 }
 
 # Function to get concept parent tree
-getParents = function(CAID){
+getParents = function(CAID,cogat){
 
-  cogat = load.rdf("/home/vanessa/Documents/Dropbox/Code/R/PACKAGES/CogatSimilar/data/cogat.v2.owl")
   cat("\nLooking up initial concepts associated with contrast",CAID)
   
   # First get associated concept IDS
-  concepts = getAssociatedContrasts(CAID)
+  concepts = getAssociatedContrasts(CAID,cogat)
   
   # Now walk up tree and retrieve "is_a" and "part_of" relations for each base
   TREE = list()
   for (base in concepts){
-    TREE[[getBaseURI(base)]] = walkUpTree(base)
+    TREE[[getBaseURI(base)]] = walkUpTree(base,cogat)
   }
   return(TREE)
 }
 
 # Get related "is_a" and "part_of" concepts
-getRelatedConcepts = function(CONID) {
-  cogat = load.rdf("/home/vanessa/Documents/Dropbox/Code/R/PACKAGES/CogatSimilar/data/cogat.v2.owl")
-  
+getRelatedConcepts = function(CONID,cogat) {
   hasParents = FALSE
   hasPartOf = FALSE
   
@@ -113,10 +109,10 @@ getRelatedConcepts = function(CONID) {
       hasPartOf = TRUE    
     }
   } 
-  if (hasParent && hasPartOf){
+  if (hasParents && hasPartOf){
     return(c(parents,partof))    
-    } else if (hasParent) {
-    return(parent)
+    } else if (hasParents) {
+    return(parents)
     } else if (hasPartOf){
     return(partof)
     } else {
@@ -129,7 +125,7 @@ getBaseURI = function(uri){
 }
 
 # Starting at base concept, walk up tree to get related concepts
-walkUpTree = function(base){
+walkUpTree = function(base,cogat){
   queue = base
   concepts = c()
   while (length(queue) > 0){
@@ -137,7 +133,7 @@ walkUpTree = function(base){
     queue = queue[-1]
     # This is the base of the ontology
     if (current!="http://www.cognitiveatlas.org/ontology/cogat.owl#CAO_00001"){
-      tmp = getRelatedConcepts(current)
+      tmp = getRelatedConcepts(current,cogat)
       if (!is.na(tmp[1])){
         cat(paste(names(tmp),tmp),sep="\n")
         concepts = c(concepts,tmp)
@@ -153,16 +149,16 @@ walkUpTree = function(base){
   return(concepts)
 }
 
-wangsim = function(CAID1, CAID2) {
+wangsim = function(CAID1, CAID2, owlFile) {
 	weight.isa = 0.8
 	weight.partof = 0.6
 
 	if (CAID1 == CAID2){
-		return (gosim=1)		
+		return (sim=1)		
   }
   
   # First retrieve a tree of concepts linked to the contrast  
-	Concepts = getConcepts(CAID1,CAID2)
+	Concepts = getConcepts(CAID1,CAID2,owlFile)
 	
 	sv.a = 1
 	sv.b = 1
@@ -170,8 +166,8 @@ wangsim = function(CAID1, CAID2) {
 	names(sv.a) = CAID1
 	names(sv.b) = CAID2 
 	
-	sv.a = uniqsv(SemVal(CAID1, Parents, sv.a, sw, weight.isa, weight.partof))
-	sv.b = uniqsv(SemVal(CAID2, Parents, sv.b, sw, weight.isa, weight.partof))
+	sv.a = uniqsv(SemVal(CAID1, Concepts, sv.a, sw, weight.isa, weight.partof))
+	sv.b = uniqsv(SemVal(CAID2, Concepts, sv.b, sw, weight.isa, weight.partof))
 	
 	idx = intersect(names(sv.a), names(sv.b))
 	inter.sva = unlist(sv.a[idx])
