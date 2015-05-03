@@ -11,14 +11,19 @@
 #' @export
 #' @examples
 #' 
-#' sim = CogatSimilar("cnt_4e00ccaa100fd","cnt_4e02624559a17",method="Wang",owlFile="cogat.v2.owl")
+#' options(java.parameters = "-Xmx4g") # This ensures we don't run out of memory
+#' library(CogatSimilar)
+#' library(rrdf)
+#' owlFile = "example/cogat.v2.owl"
+#' cogat = load.rdf(owlFile)
+#' sim = CogatSimilar("cnt_4e00ccaa100fd","cnt_4e02624559a17",method="Wang",owl=cogat)
 
-CogatSimilar = function(CAID1, CAID2, owlFile, method="Wang"){
+CogatSimilar = function(CAID1, CAID2, owl, method="Wang"){
   library(rrdf)
   
   method = match.arg(method, c("Resnik", "Jiang", "Lin", "Rel", "Wang"))
 	if (method == "Wang") {
-		sim = wangsim(CAID1, CAID2, owlFile)
+		sim = wangsim(CAID1, CAID2, owl)
 	} else {
 		sim = InfoContentMethod(CAID1, CAID2, method=method)
 	}

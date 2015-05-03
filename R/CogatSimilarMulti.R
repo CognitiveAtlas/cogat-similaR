@@ -11,7 +11,7 @@
 #' @export
 #' 
 
-CogatSimilarMulti = function(CALIST1, CALIST2, owlFile, method="Wang"){
+CogatSimilarMulti = function(CALIST1, CALIST2, owl, method="Wang"){
 
   library(rrdf)
   
@@ -27,7 +27,7 @@ CogatSimilarMulti = function(CALIST1, CALIST2, owlFile, method="Wang"){
 	colnames(scores) = CA2
 	for(i in 1:m) {
 		for (j in 1:n) {
-			scores[i,j] = CogatSimilar(CA1[i], CA2[j], owlFile=owlFile, method=method)
+			scores[i,j] = CogatSimilar(CA1[i], CA2[j], owl=owl, method=method)
 		}
 	}
 
