@@ -10,7 +10,7 @@ getConcepts = function(CAID1,CAID2,owlFile){
 
 
 # Get concepts associated with a contrast
-getAssociatedContrasts = function(CAID,cogat){
+getAssociatedConcepts = function(CAID,cogat){
   
   query = paste('
   PREFIX dc: <http://purl.org/dc/terms/>
@@ -28,14 +28,20 @@ getAssociatedContrasts = function(CAID,cogat){
   }',sep="");
   
   result = sparql.rdf(cogat,query)
-  concepts = result[grep("#measures",result[,3]),2]
   term_uri = result[1,1]
+  cat("\nTERM URI:",term_uri,sep="\n")
+      
+  if (ncol(result)==3){
+    concepts = result[grep("#measures",result[,3]),2]
   
-  cat("\nTERM URI:",term_uri,"CONCEPTS:",unlist(lapply(concepts,getBaseURI)),sep="\n")
+    cat("CONCEPTS:",unlist(lapply(concepts,getBaseURI)),sep="\n")
   
-  # The names label == parent
-  names(concepts) = rep("base",length(concepts))
-  return(concepts)
+    # The names label == parent
+    names(concepts) = rep("base",length(concepts))
+    return(concepts)
+  } else {
+    return(NA)
+  }
 }
 
 # Function to get concept parent tree
@@ -44,7 +50,7 @@ getParents = function(CAID,cogat){
   cat("\nLooking up initial concepts associated with contrast",CAID)
   
   # First get associated concept IDS
-  concepts = getAssociatedContrasts(CAID,cogat)
+  concepts = getAssociatedConcepts(CAID,cogat)
   
   # Now walk up tree and retrieve "is_a" and "part_of" relations for each base
   TREE = list()
@@ -134,10 +140,12 @@ walkUpTree = function(base,cogat){
     # This is the base of the ontology
     if (current!="http://www.cognitiveatlas.org/ontology/cogat.owl#CAO_00001"){
       tmp = getRelatedConcepts(current,cogat)
-      if (!is.na(tmp[1])){
-        cat(paste(names(tmp),tmp),sep="\n")
-        concepts = c(concepts,tmp)
-        queue = c(queue,tmp)
+      if (!is.null(tmp)){
+        if (!is.na(tmp[1])){
+          cat(paste(names(tmp),tmp),sep="\n")
+          concepts = c(concepts,tmp)
+          queue = c(queue,tmp)
+        }
       }
     }
   }
@@ -219,8 +227,22 @@ InfoContentMethod = function(CAID1, CAID2, method) {
 	Info.contents["CAO_00001"] = 0
   
   # Get the concepts assigned to the contrast
-  concepts.caid1 = getAssociatedContrasts(CAID1)
-  concepts.caid2 = getAssociatedContrasts(CAID2)
+  concepts.caid1 = getAssociatedConcepts(CAID1)
+  concepts.caid2 = getAssociatedConcepts(CAID2)
+
+  # If the contrast has no concepts assigned
+  returnZero = FALSE
+  
+  if (is.na(concepts.caid1[1])) {
+    returnZero = TRUE
+    cat("WARNING:",CAID1,"does not have associated concepts.\n")
+  } 
+  if (is.na(concepts.caid2[1])) {
+    returnZero = TRUE
+    cat("WARNING:",CAID2,"does not have associated concepts.\n")
+  }
+  if (returnZero == TRUE) { return (0) }
+  
   
   # Calculate an average probability
   p1 = Info.contents[which(names(Info.contents) %in% unlist(lapply(concepts.caid1,getBaseURI)))]
