@@ -6,13 +6,12 @@
 #' @param method: "Resnik", "Jiang", "Lin", "Rel", "Wang" [default: Wang]
 #' @keywords cognitive atlas, ontology, similarity
 #' @return 
-#' \item{matrix}{a pairwisesimilarity score matrix}
+#' \item{score}{a similarity score for the two lists}
 #' @export
-#' @examples
 #' 
 
-CogatSimilarMatrix = function(CALIST1, CALIST2, method="Wang"){
-	method = match.arg(measure, c("Resnik", "Jiang", "Lin", "Rel", "Wang"))
+CogatSimilarMulti = function(CALIST1, CALIST2, method="Wang"){
+	method = match.arg(method, c("Resnik", "Jiang", "Lin", "Rel", "Wang"))
 
 	CA1 = unlist(CALIST1)
 	CA2 = unlist(CALIST2)

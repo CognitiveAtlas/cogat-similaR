@@ -238,9 +238,7 @@ InfoContentMethod = function(CAID1, CAID2, method) {
 
 	if (p1 == 0 || p2 == 0) return (NA)
 	
-  # QUESTION: Do we only want to select is_a relationships here? 
-  # Will select both is_a and part_of for now.
-	ancestor.caid1 = sort(unique(unlist(getParents(CAID1))),decreasing=TRUE)
+  ancestor.caid1 = sort(unique(unlist(getParents(CAID1))),decreasing=TRUE)
   ancestor.caid2 = sort(unique(unlist(getParents(CAID2))),decreasing=TRUE)
 	
   # If we are comparing a term to itself, the common ancestors are the shared concepts
