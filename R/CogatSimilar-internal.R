@@ -1,40 +1,22 @@
-getConcepts = function(CAID1,CAID2,owlFile){
+getConcepts = function(CAID1,CAID2){
 
   Parents = list()
   
   # Climb tree and get all concepts
-  Parents[[CAID1]] = getParents(CAID1,owlFile)
-  Parents[[CAID2]] = getParents(CAID2,owlFile)
+  Parents[[CAID1]] = getParents(CAID1)
+  Parents[[CAID2]] = getParents(CAID2)
   return(Parents)
 }
 
 
 # Get concepts associated with a contrast
-getAssociatedConcepts = function(CAID,cogat){
+getAssociatedConcepts = function(CAID){
   
-  query = paste('
-  PREFIX dc: <http://purl.org/dc/terms/>
-  PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-  PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-  PREFIX owl: <http://www.w3.org/2002/07/owl#>
-  PREFIX cogat: <http://www.cognitiveatlas.org/id/>
-
-  SELECT DISTINCT ?term_uri ?task ?relation
-  WHERE {
-    ?term_uri dc:identifier "',CAID,'" .
-    ?term_uri rdfs:subClassOf ?subclass .
-    ?subclass owl:someValuesFrom ?task .
-    ?subclass owl:onProperty ?relation .
-  }',sep="");
-  
-  result = sparql.rdf(cogat,query)
-  term_uri = result[1,1]
-  cat("\nTERM URI:",term_uri,sep="\n")
+  query = readLines(paste('http://cognitiveatlas.org/api/v-alpha/concepts_by_contrast/',CAID,sep=""),warn=FALSE);
+  concepts = fromJSON(query)  
       
-  if (ncol(result)==3){
-    concepts = result[grep("#measures",result[,3]),2]
-  
-    cat("CONCEPTS:",unlist(lapply(concepts,getBaseURI)),sep="\n")
+  if (length(concepts)!=0){  
+    cat("CONCEPTS:",concepts,sep="\n")
   
     # The names label == parent
     names(concepts) = rep("base",length(concepts))
@@ -45,50 +27,41 @@ getAssociatedConcepts = function(CAID,cogat){
 }
 
 # Function to get concept parent tree
-getParents = function(CAID,cogat){
+getParents = function(CAID){
 
   cat("\nLooking up initial concepts associated with contrast",CAID)
   
   # First get associated concept IDS
-  concepts = getAssociatedConcepts(CAID,cogat)
+  concepts = getAssociatedConcepts(CAID)
   
   # Now walk up tree and retrieve "is_a" and "part_of" relations for each base
   TREE = list()
   for (base in concepts){
-    TREE[[getBaseURI(base)]] = walkUpTree(base,cogat)
+    TREE[[getBaseURI(base)]] = walkUpTree(base)
   }
   return(TREE)
 }
 
 # Get related "is_a" and "part_of" concepts
-getRelatedConcepts = function(CONID,cogat) {
+getRelatedConcepts = function(CONID) {
   hasParents = FALSE
   hasPartOf = FALSE
   
   # First get the parent
-  # Here is the parent <rdfs:subClassOf rdf:resource="&cogat;CAO_00525"/> (is_a)
-  query = paste('
-  PREFIX dc: <http://purl.org/dc/terms/>
-  PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-  PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-  PREFIX owl: <http://www.w3.org/2002/07/owl#>
-  PREFIX cogat: <http://www.cognitiveatlas.org/id/>
-
-  SELECT DISTINCT ?subclass
-  WHERE {<',
-     CONID,'> dc:identifier ?cnt_uri .
-     <',CONID, '> rdfs:subClassOf ?subclass .
-  }',sep="");
+  query = readLines(paste("http://cognitiveatlas.org/api/v-alpha/relationships_by_concept/",current,sep=""),warn=FALSE);
   
-  result = sparql.rdf(cogat,query)
-  if (length(result)>0){
+  if (length(query)>0){
+    relationships = fromJSON(query)  
+    #TODO: when Olivier updates with relationships, fix this function
     result = result[grep("#",result)]    
     # Remove the conid from the list
     parents = result[-grep(CONID,result)]
     parents = unlist(lapply(parents,getBaseURI))
     names(parents) = rep("is_a",length(parents))
     hasParents = TRUE
-  } 
+  } else {
+    return(NA)
+  }
   
   # Next get associated "part of" concept IDS
   query = paste('
@@ -131,22 +104,21 @@ getBaseURI = function(uri){
 }
 
 # Starting at base concept, walk up tree to get related concepts
-walkUpTree = function(base,cogat){
+walkUpTree = function(base){
   queue = base
   concepts = c()
   while (length(queue) > 0){
     current = queue[1]
     queue = queue[-1]
     # This is the base of the ontology
-    if (current!="http://www.cognitiveatlas.org/ontology/cogat.owl#CAO_00001"){
-      tmp = getRelatedConcepts(current,cogat)
+    tmp = getRelatedConcepts(current)
       if (!is.null(tmp)){
         if (!is.na(tmp[1])){
           cat(paste(names(tmp),tmp),sep="\n")
           concepts = c(concepts,tmp)
           queue = c(queue,tmp)
         }
-      }
+    
     }
   }
   root = "CAO_00001"
@@ -157,7 +129,7 @@ walkUpTree = function(base,cogat){
   return(concepts)
 }
 
-wangsim = function(CAID1, CAID2, owlFile) {
+wangsim = function(CAID1, CAID2) {
 	weight.isa = 0.8
 	weight.partof = 0.6
 
@@ -166,7 +138,7 @@ wangsim = function(CAID1, CAID2, owlFile) {
   }
   
   # First retrieve a tree of concepts linked to the contrast  
-	Concepts = getConcepts(CAID1,CAID2,owlFile)
+	Concepts = getConcepts(CAID1,CAID2)
 	
 	sv.a = 1
 	sv.b = 1
@@ -242,7 +214,6 @@ InfoContentMethod = function(CAID1, CAID2, method) {
     cat("WARNING:",CAID2,"does not have associated concepts.\n")
   }
   if (returnZero == TRUE) { return (0) }
-  
   
   # Calculate an average probability
   p1 = Info.contents[which(names(Info.contents) %in% unlist(lapply(concepts.caid1,getBaseURI)))]

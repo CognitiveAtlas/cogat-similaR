@@ -19,3 +19,9 @@ This method aggregates the semantic contributions of ancestor terms (including t
 #### Calculating similarity between contrasts
  1. We take the weights at the intersection of each list from above
  2. The similarity score is sum(intersected weights) / sum(all weights)
+
+
+### References
+This code base was adopted from the "GOSemSim" package, authored by Guangchuang Yu 
+
+Yu et al. (2010) [GOSemSim: an R package for measuring semantic similarity among GO terms and gene products],(http://bioinformatics.oxfordjournals.org/cgi/content/abstract/26/7/976) Bioinformatics (Oxford, England), 26:7 976--978, April 2010. ISSN 1367-4803 PMID: 20179076
