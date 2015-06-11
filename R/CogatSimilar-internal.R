@@ -8,24 +8,6 @@ getConcepts = function(CAID1,CAID2){
   return(Parents)
 }
 
-
-# Get concepts associated with a contrast
-getAssociatedConcepts = function(CAID){
-  
-  query = readLines(paste('http://cognitiveatlas.org/api/v-alpha/concepts_by_contrast/',CAID,sep=""),warn=FALSE);
-  concepts = fromJSON(query)  
-      
-  if (length(concepts)!=0){  
-    cat("CONCEPTS:",concepts,sep="\n")
-  
-    # The names label == parent
-    names(concepts) = rep("base",length(concepts))
-    return(concepts)
-  } else {
-    return(NA)
-  }
-}
-
 # Function to get concept parent tree
 getParents = function(CAID){
 
@@ -36,11 +18,38 @@ getParents = function(CAID){
   
   # Now walk up tree and retrieve "is_a" and "part_of" relations for each base
   TREE = list()
-  for (base in concepts){
-    TREE[[getBaseURI(base)]] = walkUpTree(base)
+  for (base in concepts$uid){
+    TREE[[base]] = walkUpTree(base)
   }
   return(TREE)
 }
+
+# Get concepts associated with a contrast
+getAssociatedConcepts = function(CAID){
+  
+  query = readLines(paste('http://cognitiveatlas.org/api/v-alpha/concept?contrast_id=',CAID,sep=""),warn=FALSE);
+  concepts = fromJSON(query)  
+  
+  result = c()
+  if (length(concepts)!=0){  
+    for (c in 1:length(concepts)){
+      if (length(concepts[[c]]) > 1) {
+        res = cbind(concepts[[c]]$term_text,concepts[[c]]$trm_id)
+        result = rbind(result,res)
+      }
+    }
+    result = as.data.frame(result,stringsAsFactors=FALSE)
+    colnames(result) = c("term","uid")
+    cat("CONCEPTS:",result$term,sep="\n")
+    
+    # Define that we are at starting point
+    result$relation = "base"
+    return(result)
+  } else {
+    return(NA)
+  }
+}
+
 
 # Get related "is_a" and "part_of" concepts
 getRelatedConcepts = function(CONID) {
@@ -48,59 +57,30 @@ getRelatedConcepts = function(CONID) {
   hasPartOf = FALSE
   
   # First get the parent
-  query = readLines(paste("http://cognitiveatlas.org/api/v-alpha/relationships_by_concept/",current,sep=""),warn=FALSE);
+  query = readLines(paste("http://cognitiveatlas.org/api/v-alpha/concept?concept_id=",CONID,sep=""),warn=FALSE);
   
   if (length(query)>0){
-    relationships = fromJSON(query)  
-    #TODO: when Olivier updates with relationships, fix this function
-    result = result[grep("#",result)]    
-    # Remove the conid from the list
-    parents = result[-grep(CONID,result)]
-    parents = unlist(lapply(parents,getBaseURI))
-    names(parents) = rep("is_a",length(parents))
-    hasParents = TRUE
-  } else {
+    relationships = fromJSON(query)[[1]]
+    hasParents=TRUE
+    
+    if ("relationships" %in% names(relationships)) {
+      # Find the parents
+      parents = c()
+      for (r in 1:length(relationships$relationships)){
+        relation = relationships$relationships[[r]]
+        if (relation$direction=="parent"){
+          res = relation$id
+          names(res) = relation$relationship
+          parents = c(parents,res)
+        }
+      }
+      return(parents)
+    } else{
+    return(NA)}
+  }
+  else {
     return(NA)
   }
-  
-  # Next get associated "part of" concept IDS
-  query = paste('
-  PREFIX dc: <http://purl.org/dc/terms/>
-  PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-  PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-  PREFIX owl: <http://www.w3.org/2002/07/owl#>
-  PREFIX cogat: <http://www.cognitiveatlas.org/id/>
-
-  SELECT DISTINCT ?task ?relation
-  WHERE {<',
-     CONID,'> dc:identifier ?cnt_uri .
-     <',CONID, '> rdfs:subClassOf ?subclass .
-     ?subclass owl:someValuesFrom ?task .
-     ?subclass owl:onProperty ?relation .
-  }',sep="");
-  
-  result = sparql.rdf(cogat,query)
-  if (length(result)>0){
-    partof = result[grep("#part_of",result[,2]),1]
-    if (length(partof) > 0){
-      partof = unlist(lapply(partof,getBaseURI))      
-      names(partof) = rep("part_of",length(partof))
-      hasPartOf = TRUE    
-    }
-  } 
-  if (hasParents && hasPartOf){
-    return(c(parents,partof))    
-    } else if (hasParents) {
-    return(parents)
-    } else if (hasPartOf){
-    return(partof)
-    } else {
-    return(NA)
-    }
-}
-
-getBaseURI = function(uri){
-  return(strsplit(uri,"#")[[1]][2])
 }
 
 # Starting at base concept, walk up tree to get related concepts
@@ -118,19 +98,18 @@ walkUpTree = function(base){
           concepts = c(concepts,tmp)
           queue = c(queue,tmp)
         }
-    
-    }
+     }
   }
   root = "CAO_00001"
-  names(root) = "is_a"
-  base = getBaseURI(base)
-  names(base) = "is_a"
+    
+  names(root) = "kind_of"
+  names(base) = "kind_of"
   concepts = c(base,concepts,root)
   return(concepts)
 }
 
 wangsim = function(CAID1, CAID2) {
-	weight.isa = 0.8
+	weight.kindof = 0.8 # akin to "is_a"
 	weight.partof = 0.6
 
 	if (CAID1 == CAID2){
@@ -146,8 +125,12 @@ wangsim = function(CAID1, CAID2) {
 	names(sv.a) = CAID1
 	names(sv.b) = CAID2 
 	
-	sv.a = uniqsv(SemVal(CAID1, Concepts, sv.a, sw, weight.isa, weight.partof))
-	sv.b = uniqsv(SemVal(CAID2, Concepts, sv.b, sw, weight.isa, weight.partof))
+  weightlists.a = getweightlists(CAID1, Concepts, sv.a, sw, weight.kindof, weight.partof)
+	weightlists.b = getweightlists(CAID2, Concepts, sv.b, sw, weight.kindof, weight.partof)
+  
+  # If a node is hit twice in the graph (from separate parents) we use the highest weight
+	sv.a = uniqsv(weightlists.a)
+	sv.b = uniqsv(weightlists.b)
 	
 	idx = intersect(names(sv.a), names(sv.b))
 	inter.sva = unlist(sv.a[idx])
@@ -164,30 +147,43 @@ uniqsv = function(sv) {
 	return (sv)
 }
 
-# Return list of weights assigned to each part_of, is_a relationshi
-SemVal = function(CAID, Parents, startValue, startWeight, weight.isa, weight.partof) {
-	p = unlist(Parents[[CAID]])
+# Return list of weights assigned to each part_of, is_a relationship
+getweightlists = function(CAID, Parents, startValue, startWeight, weight.kindof, weight.partof) {
+  # In the case of more than one parent, we will calculate similarity for both
   
-	# Ensure the root node is at the end
-	p = sort(p,decreasing=TRUE)
-  if (length(p) == 0) {
-		cat("WARNING:",CAID, "does not have related concept parents defined in Cognitive Atlas\n")
-		return(startValue)
-	}
-	relations = names(p)
-	old.w = startWeight
-	for (i in 1:length(p)) {
-		if (grepl("is_a",relations[i])) {
-			startWeight = old.w * weight.isa
-		} else {
-			startWeight = old.w * weight.partof
-		}
-		names(startWeight) = p[i]
-		startValue = c(startValue,startWeight)
-    old.w = startWeight
-	}
-	return (startValue)
+  weightLists = c()
+  noparents=TRUE
+  
+  for (pp in 1:length(Parents[[CAID]])) {
+    p = unlist(Parents[[CAID]][[pp]])
+    plabel = names(Parents[[CAID]][pp])
+    
+  	# Ensure the root node is at the end
+  	p = sort(p,decreasing=TRUE)
+    if (length(p) != 0) {
+    	noparents = FALSE
+      relations = names(p)
+    	old.w = startWeight
+    	for (i in 1:length(p)) {
+    		if (grepl("kind of",relations[i])) {
+    			startWeight = old.w * weight.kindof
+    		} else {
+    			startWeight = old.w * weight.partof
+    		}
+    		names(startWeight) = p[i]
+    		startValue = c(startValue,startWeight)
+        old.w = startWeight
+    	}
+    	weightLists = c(weightLists,startValue)
+    }
+  }
+  # If no parents, then return root
+  if (noparents==TRUE){
+    weightLists = startValue
+  }
+  return(weightLists)
 }
+
 
 InfoContentMethod = function(CAID1, CAID2, method) {
   
