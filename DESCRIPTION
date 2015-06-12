@@ -3,6 +3,7 @@ Type: Package
 Title: Cognitive Atlas Ontological Similarity
 Version: 1.0
 Author: Vanessa Sochat
-Maintainer: Vanessa Sochat <vsochat@gmail.com>
+Maintainer: Vanessa Sochat <vsochat@stanford.edu>
+Suggests: GoSemSim
 Description: Five methods proposed by Resnik, Schlicker, Jiang, Lin and Wang, originally applied for Gene Ontology (GoSemSim package) modified for the Cognitive Atlas to calculate ontological similarity of terms.
 License: GPL-2

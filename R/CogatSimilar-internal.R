@@ -153,6 +153,7 @@ getweightlists = function(CAID, Parents, startValue, startWeight, weight.kindof,
   
   weightLists = c()
   noparents=TRUE
+  startWeightHolder = startWeight
   
   for (pp in 1:length(Parents[[CAID]])) {
     p = unlist(Parents[[CAID]][[pp]])
@@ -163,6 +164,7 @@ getweightlists = function(CAID, Parents, startValue, startWeight, weight.kindof,
     if (length(p) != 0) {
     	noparents = FALSE
       relations = names(p)
+      startWeight = startWeightHolder
     	old.w = startWeight
     	for (i in 1:length(p)) {
     		if (grepl("kind of",relations[i])) {
@@ -181,7 +183,7 @@ getweightlists = function(CAID, Parents, startValue, startWeight, weight.kindof,
   if (noparents==TRUE){
     weightLists = startValue
   }
-  return(weightLists)
+return(weightLists)
 }
 
 

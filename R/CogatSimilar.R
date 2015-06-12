@@ -10,10 +10,7 @@
 #' @export
 #' @examples
 #' 
-#' options(java.parameters = "-Xmx4g") # This ensures we don't run out of memory
 #' library(CogatSimilar)
-#' library(rrdf)
-#' cogat = load.rdf(owlFile)
 #' sim = CogatSimilar("cnt_4e00ccaa100fd","cnt_4e02624559a17",method="Wang")
 
 CogatSimilar = function(CAID1, CAID2, owl, method="Wang"){
