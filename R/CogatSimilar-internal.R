@@ -57,7 +57,7 @@ getRelatedConcepts = function(CONID) {
   hasPartOf = FALSE
   
   # First get the parent
-  query = readLines(paste("http://cognitiveatlas.org/api/v-alpha/concept?concept_id=",CONID,sep=""),warn=FALSE);
+  query = readLines(paste("http://cognitiveatlas.org/api/v-alpha/concept?id=",CONID,sep=""),warn=FALSE);
   
   if (length(query)>0){
     relationships = fromJSON(query)[[1]]
