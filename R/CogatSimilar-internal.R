@@ -86,17 +86,21 @@ getRelatedConcepts = function(CONID) {
 # Starting at base concept, walk up tree to get related concepts
 walkUpTree = function(base){
   queue = base
+  seen = c()
   concepts = c()
   while (length(queue) > 0){
     current = queue[1]
     queue = queue[-1]
     # This is the base of the ontology
-    tmp = getRelatedConcepts(current)
-      if (!is.null(tmp)){
-        if (!is.na(tmp[1])){
-          cat(paste(names(tmp),tmp),sep="\n")
-          concepts = c(concepts,tmp)
-          queue = c(queue,tmp)
+    if (!(current %in% seen)) {
+      tmp = getRelatedConcepts(current)
+        if (!is.null(tmp)){
+          if (!is.na(tmp[1])){
+            cat(paste(names(tmp),tmp),sep="\n")
+            concepts = c(concepts,tmp)
+            queue = c(queue,tmp)
+            seen = c(seen,current)
+          }
         }
      }
   }
