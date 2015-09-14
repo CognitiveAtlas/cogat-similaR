@@ -13,7 +13,7 @@
 #' library(CogatSimilar)
 #' sim = CogatSimilar("cnt_4e00ccaa100fd","cnt_4e02624559a17",method="Wang")
 
-CogatSimilar = function(CAID1, CAID2, owl, method="Wang"){
+CogatSimilar = function(CAID1, CAID2, method="Wang"){
   library(rjson)
   
   method = match.arg(method, c("Resnik", "Jiang", "Lin", "Rel", "Wang"))

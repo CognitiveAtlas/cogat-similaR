@@ -4,6 +4,13 @@ This package implements different ontological similarity metrics for the Cogniti
 
 UNDER DEVELOPMENT
 
+### Installation
+
+Make sure you have devtools installed
+
+      library(devtools)
+      devtools::install_github("CognitiveAtlas/cogat-similaR")
+
 ###[Wang](http://bioinformatics.oxfordjournals.org/content/23/10/1274.full)
 This method aggregates the semantic contributions of ancestor terms (including this specific term).
 

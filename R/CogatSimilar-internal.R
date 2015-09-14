@@ -34,13 +34,13 @@ getAssociatedConcepts = function(CAID){
   if (length(concepts)!=0){  
     for (c in 1:length(concepts)){
       if (length(concepts[[c]]) > 1) {
-        res = cbind(concepts[[c]]$term_text,concepts[[c]]$trm_id)
+        res = cbind(concepts[[c]]$name,concepts[[c]]$id)
         result = rbind(result,res)
       }
     }
     result = as.data.frame(result,stringsAsFactors=FALSE)
     colnames(result) = c("term","uid")
-    cat("CONCEPTS:",result$term,sep="\n")
+    cat("CONCEPTS:",as.character(result$term),sep="\n")
     
     # Define that we are at starting point
     result$relation = "base"
