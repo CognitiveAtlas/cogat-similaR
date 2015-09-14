@@ -2,14 +2,20 @@
 
 This package implements different ontological similarity metrics for the Cognitive Atlas to assess similarity of two contrast labels based on associated concepts.
 
-UNDER DEVELOPMENT
+This package is UNDER DEVELOPMENT, and likely to be ported into Python.
 
 ### Installation
 
-Make sure you have devtools installed
+Outside of R
+
+      git clone https://github.com/CognitiveAtlas/cogat-similaR
+      R      
+
+Inside of R
 
       library(devtools)
-      devtools::install_github("CognitiveAtlas/cogat-similaR")
+      install("cogat-similaR")
+
 
 ###[Wang](http://bioinformatics.oxfordjournals.org/content/23/10/1274.full)
 This method aggregates the semantic contributions of ancestor terms (including this specific term).
