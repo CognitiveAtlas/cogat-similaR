@@ -16,6 +16,10 @@ getParents = function(CAID){
   # First get associated concept IDS
   concepts = getAssociatedConcepts(CAID)
   
+  if (is.na(concepts)){
+    return(NA)
+  }
+  
   # Now walk up tree and retrieve "is_a" and "part_of" relations for each base
   TREE = list()
   for (base in concepts$uid){
@@ -32,7 +36,7 @@ getAssociatedConcepts = function(CAID){
   
   # Cognitive Atlas Bug
   if (concepts[1]==""){
-    cat("Probem with Cognitive Atlas returning empty result for",CAID)
+    cat("\nProbem with Cognitive Atlas returning empty result for",CAID,"\n")
     return(NA)
   }
   
