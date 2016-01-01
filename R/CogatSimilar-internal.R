@@ -26,9 +26,15 @@ getParents = function(CAID){
 
 # Get concepts associated with a contrast
 getAssociatedConcepts = function(CAID){
-  
+
   query = readLines(paste('http://cognitiveatlas.org/api/v-alpha/concept?contrast_id=',CAID,sep=""),warn=FALSE);
   concepts = fromJSON(query)  
+  
+  # Cognitive Atlas Bug
+  if (concepts[1]==""){
+    cat("Probem with Cognitive Atlas returning empty result for",CAID)
+    return(NA)
+  }
   
   result = c()
   if (length(concepts)!=0){  
