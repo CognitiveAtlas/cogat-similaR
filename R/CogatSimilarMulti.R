@@ -15,7 +15,7 @@ CogatSimilarMulti = function(CALIST1, CALIST2, owl, method="Wang"){
 
   library(rrdf)
   
-  method = match.arg(method, c("Resnik", "Jiang", "Lin", "Rel", "Wang"))
+  method = match.arg(method, c("Wang"))
 
 	CA1 = unlist(CALIST1)
 	CA2 = unlist(CALIST2)
