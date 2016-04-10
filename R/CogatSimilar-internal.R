@@ -149,7 +149,7 @@ wangsim = function(CAID1, CAID2) {
 	idx = intersect(names(sv.a), names(sv.b))
 	inter.sva = unlist(sv.a[idx])
 	inter.svb = unlist(sv.b[idx])
-	sim = sum(inter.sva,inter.svb) / sum(sv.a, sv.b)
+	sim = sum(inter.sva,inter.svb) / sum(length(sv.a), length(sv.b))
 	return(sim)
 }
 
