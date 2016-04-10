@@ -8,7 +8,6 @@
 #' @keywords cognitive atlas, ontology, similarity
 #' @return 
 #' \item{score}{a similarity score for the two lists}
-#' @export
 #' 
 
 CogatSimilarMulti = function(CALIST1, CALIST2, owl, method="Wang"){
